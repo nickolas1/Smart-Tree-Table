@@ -1,11 +1,11 @@
 {
   "name": "angular-smart-table",
   "version": "2.1.8",
-  "homepage": "https://github.com/lorenzofox3/Smart-Table",
+  "homepage": "https://github.com/nickolas1/Smart-Tree-Table",
   "authors": [
-    "lorenzofox3 <laurent34azerty@gmail.com>"
+    "nickolas1 <nickolas1@gmail.com>"
   ],
-  "description": "table module for angular",
+  "description": "tree table module for angular",
   "main": "dist/smart-table.js",
   "keywords": [
     "smart-table",
