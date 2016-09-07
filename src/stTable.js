@@ -1,5 +1,5 @@
 ng.module('smart-table')
-  .controller('stTableController', ['$scope', '$parse', '$filter', '$attrs', function StTableController ($scope, $parse, $filter, $attrs) {
+  .controller('stTableController', ['$scope', '$parse', '$filter', '$attrs', 'stConfig', function StTableController ($scope, $parse, $filter, $attrs, stConfig) {
     var propertyName = $attrs.stTable;
     var displayGetter = $parse(propertyName);
     var displaySetter = displayGetter.assign;
@@ -19,9 +19,17 @@ ng.module('smart-table')
     var pipeAfterSafeCopy = true;
     var ctrl = this;
     var lastSelected;
-
+    var isTreeTable = 'stTreeTable' in $attrs;
+    var nodeExpanded;
+    //TODO allow passing an object with different levels open or closed?
+    var initiallyOpen = 'stTreeInitOpen' in $attrs ? Boolean(JSON.parse($attrs.stTreeInitOpen.toLowerCase())) : stConfig.tree.nodesInitiallyOpen;
+    
     function copyRefs (src) {
-      return src ? [].concat(src) : [];
+      var copy = src ? [].concat(src) : [];
+      if (isTreeTable) {
+        treeifyData(copy);
+      }
+      return copy;
     }
 
     function updateSafeCopy () {
@@ -36,14 +44,64 @@ ng.module('smart-table')
         var partials = path.split('.');
         var key = partials.pop();
         var parentPath = partials.join('.');
-        var parentObject = $parse(parentPath)(object)
+        var parentObject = $parse(parentPath)(object);
         delete parentObject[key];
-        if (Object.keys(parentObject).length == 0) {
+        if (Object.keys(parentObject).length === 0) {
           deepDelete(object, parentPath);
         }
       } else {
         delete object[path];
       }
+    }
+    
+    function treeifyData(data) {
+      data.forEach(function(d, i) {
+        if (!d.$$treeId) d.$$treeId = d.treeLevel.toString() + i + Math.floor(Math.random()*10000);
+      });
+      var ancestorSet = {};
+      data.forEach(function(d, i) {
+        if (d.treeLevel > 0) {
+          d.$$treeDescendents = [];
+          d.$$treeIsExpanded = initiallyOpen;
+        }
+        d.$$treeAncestors = findTreeAncestors(d, i);
+        d.$$treeShown = d.treeLevel > 0;
+      });
+      
+      nodeExpanded = {};
+      Object.keys(ancestorSet).forEach(function(k) {
+        nodeExpanded[k] = initiallyOpen;
+      });
+      
+      data.forEach(function(d, i) {
+        if (d.treeLevel > 0) checkDescendentVisibility(data, i);
+      });
+      
+      function findTreeAncestors(datum, idx) {
+        var ancestors = [];
+        for (var i = idx; i >= 0; i--) {
+          if (data[i].treeLevel > datum.treeLevel) {
+            ancestors.push(data[i].$$treeId);
+            ancestorSet[data[i].$$treeId] = true;
+            data[i].$$treeDescendents.push(idx);
+            return ancestors.concat(data[i].$$treeAncestors);
+          }
+        }
+        return ancestors;
+      }
+    }
+    
+    function checkDescendentVisibility(data, idx) {
+      data[idx].$$treeDescendents.forEach(function(descIdx) {
+        var shown = true;
+        data[descIdx].$$treeAncestors.forEach(function(ancId) {
+          shown = shown && nodeExpanded[ancId];
+        });
+        data[descIdx].$$treeShown = shown;
+        if (data[descIdx].$$treeDescendents) {
+          checkDescendentVisibility(data, descIdx);
+        }
+      });
     }
 
     if ($attrs.stSafeSrc) {
@@ -199,6 +257,27 @@ ng.module('smart-table')
      */
     this.preventPipeOnWatch = function preventPipe () {
       pipeAfterSafeCopy = false;
+    };
+    
+    /**
+     * Open or close a tree level.
+     * @param treeId the unique id of the tree table row being toggled
+     * @param treeIdx the index of the row in the table
+     */
+    this.toggleRow = function toggleRow (treeId, treeIdx) {
+      nodeExpanded[treeId] = !nodeExpanded[treeId];
+      safeCopy[treeIdx].$$treeIsExpanded = nodeExpanded[treeId];
+      $scope.$apply(function() {
+        checkDescendentVisibility(safeCopy, treeIdx);
+      });
+    };
+    
+    /**
+     * Check if a tree level is open or closed
+     * @param treeId the unique id of the tree table row being checked
+     */
+    this.checkExpanded = function checkExpanded (treeId) {
+      return nodeExpanded[treeId];
     };
   }])
   .directive('stTable', function () {

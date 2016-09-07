@@ -10,8 +10,11 @@ ng.module('smart-table', []).run(['$templateCache', function ($templateCache) {
         '<nav ng-if="numPages && pages.length >= 2"><ul class="pagination">' +
         '<li ng-repeat="page in pages" ng-class="{active: page==currentPage}"><a href="javascript: void(0);" ng-click="selectPage(page)">{{page}}</a></li>' +
         '</ul></nav>');
+        
+    $templateCache.put('sttable/template/st-tree-toggle.html',
+        '<span ng-class="spacerClass"></span><i ng-if="toggleExists" ng-class="toggleIsExpanded ? \'fa fa-caret-down\' : \'fa fa-caret-right\'"></i>\n' +
+        '');
 }]);
-
 
 ng.module('smart-table')
   .constant('stConfig', {
@@ -37,10 +40,14 @@ ng.module('smart-table')
     },
     pipe: {
       delay: 100 //ms
+    },
+    tree: {
+      nodesInitiallyOpen: true
     }
   });
+
 ng.module('smart-table')
-  .controller('stTableController', ['$scope', '$parse', '$filter', '$attrs', function StTableController ($scope, $parse, $filter, $attrs) {
+  .controller('stTableController', ['$scope', '$parse', '$filter', '$attrs', 'stConfig', function StTableController ($scope, $parse, $filter, $attrs, stConfig) {
     var propertyName = $attrs.stTable;
     var displayGetter = $parse(propertyName);
     var displaySetter = displayGetter.assign;
@@ -60,9 +67,17 @@ ng.module('smart-table')
     var pipeAfterSafeCopy = true;
     var ctrl = this;
     var lastSelected;
-
+    var isTreeTable = 'stTreeTable' in $attrs;
+    var nodeExpanded;
+    //TODO allow passing an object with different levels open or closed?
+    var initiallyOpen = 'stTreeInitOpen' in $attrs ? Boolean(JSON.parse($attrs.stTreeInitOpen.toLowerCase())) : stConfig.tree.nodesInitiallyOpen;
+    
     function copyRefs (src) {
-      return src ? [].concat(src) : [];
+      var copy = src ? [].concat(src) : [];
+      if (isTreeTable) {
+        treeifyData(copy);
+      }
+      return copy;
     }
 
     function updateSafeCopy () {
@@ -77,14 +92,64 @@ ng.module('smart-table')
         var partials = path.split('.');
         var key = partials.pop();
         var parentPath = partials.join('.');
-        var parentObject = $parse(parentPath)(object)
+        var parentObject = $parse(parentPath)(object);
         delete parentObject[key];
-        if (Object.keys(parentObject).length == 0) {
+        if (Object.keys(parentObject).length === 0) {
           deepDelete(object, parentPath);
         }
       } else {
         delete object[path];
       }
+    }
+    
+    function treeifyData(data) {
+      data.forEach(function(d, i) {
+        if (!d.$$treeId) d.$$treeId = d.treeLevel.toString() + i + Math.floor(Math.random()*10000);
+      });
+      var ancestorSet = {};
+      data.forEach(function(d, i) {
+        if (d.treeLevel > 0) {
+          d.$$treeDescendents = [];
+          d.$$treeIsExpanded = initiallyOpen;
+        }
+        d.$$treeAncestors = findTreeAncestors(d, i);
+        d.$$treeShown = d.treeLevel > 0;
+      });
+      
+      nodeExpanded = {};
+      Object.keys(ancestorSet).forEach(function(k) {
+        nodeExpanded[k] = initiallyOpen;
+      });
+      
+      data.forEach(function(d, i) {
+        if (d.treeLevel > 0) checkDescendentVisibility(data, i);
+      });
+      
+      function findTreeAncestors(datum, idx) {
+        var ancestors = [];
+        for (var i = idx; i >= 0; i--) {
+          if (data[i].treeLevel > datum.treeLevel) {
+            ancestors.push(data[i].$$treeId);
+            ancestorSet[data[i].$$treeId] = true;
+            data[i].$$treeDescendents.push(idx);
+            return ancestors.concat(data[i].$$treeAncestors);
+          }
+        }
+        return ancestors;
+      }
+    }
+    
+    function checkDescendentVisibility(data, idx) {
+      data[idx].$$treeDescendents.forEach(function(descIdx) {
+        var shown = true;
+        data[descIdx].$$treeAncestors.forEach(function(ancId) {
+          shown = shown && nodeExpanded[ancId];
+        });
+        data[descIdx].$$treeShown = shown;
+        if (data[descIdx].$$treeDescendents) {
+          checkDescendentVisibility(data, descIdx);
+        }
+      });
     }
 
     if ($attrs.stSafeSrc) {
@@ -240,6 +305,27 @@ ng.module('smart-table')
      */
     this.preventPipeOnWatch = function preventPipe () {
       pipeAfterSafeCopy = false;
+    };
+    
+    /**
+     * Open or close a tree level.
+     * @param treeId the unique id of the tree table row being toggled
+     * @param treeIdx the index of the row in the table
+     */
+    this.toggleRow = function toggleRow (treeId, treeIdx) {
+      nodeExpanded[treeId] = !nodeExpanded[treeId];
+      safeCopy[treeIdx].$$treeIsExpanded = nodeExpanded[treeId];
+      $scope.$apply(function() {
+        checkDescendentVisibility(safeCopy, treeIdx);
+      });
+    };
+    
+    /**
+     * Check if a tree level is open or closed
+     * @param treeId the unique id of the tree table row being checked
+     */
+    this.checkExpanded = function checkExpanded (treeId) {
+      return nodeExpanded[treeId];
     };
   }])
   .directive('stTable', function () {
@@ -527,6 +613,66 @@ ng.module('smart-table')
         post: function (scope, element, attrs, ctrl) {
           ctrl.pipe();
         }
+      }
+    };
+  }]);
+
+ng.module('smart-table')
+  .directive('stTreeRow', ['stConfig', function (stConfig) {
+    return {
+      restrict: 'A',
+      require: '^stTable',
+      priority: 1001, // needs to compile before ng-repeat at priority 1000
+      compile: function (tElement, tAttrs) {
+        // add tree attributes
+        var repeat = tAttrs.ngRepeat;
+        var rptVar = repeat.split(' in ')[0];
+        tElement.attr('ng-repeat', repeat + ' track by ' + rptVar + '.$$treeId');
+        tElement.attr('st-tree-row-internal', '');
+        tElement.attr('st-tree-id', rptVar + '.$$treeId');
+        tElement.attr('st-tree-level', rptVar + '.treeLevel');
+        tElement.attr('st-tree-index', '$index');
+        tElement.attr('ng-if', rptVar + '.$$treeShown');
+        tElement.attr('ng-class', '"st-tree-row-"+' + rptVar + '.treeLevel');
+            
+        var caretEl = angular.element(tElement.find('td')[0]).find('st-tree-caret');
+        caretEl.attr('toggle-exists', rptVar + '.treeLevel > 0');
+        caretEl.attr('toggle-is-expanded', rptVar + '.$$treeIsExpanded');
+        caretEl.attr('toggle-level', rptVar + '.treeLevel');
+      }
+    };
+  }]);
+
+ng.module('smart-table')
+  .directive('stTreeRowInternal', ['stConfig', function (stConfig) {
+    return {
+      require: '^^stTable',
+      scope: {
+        stTreeId: '<',
+        stTreeLevel: '<',
+        stTreeIndex: '<'
+      },
+      link: function(scope, element, attrs, tableCtrl) {
+        if (scope.stTreeLevel > 0) {
+          element.bind('click', function() {
+            tableCtrl.toggleRow(scope.stTreeId, scope.stTreeIndex);
+          });
+        }
+      }
+    };
+  }]);
+  
+ng.module('smart-table')
+  .directive('stTreeCaret', ['stConfig', function (stConfig) {
+    return {
+      scope: {
+        toggleExists: '<',
+        toggleIsExpanded: '<',
+        toggleLevel: '<'
+      },
+      templateUrl: 'sttable/template/st-tree-toggle.html',
+      link: function(scope) {
+        scope.spacerClass = 'st-tree-spacer st-tree-spacer-level-' + scope.toggleLevel;
       }
     };
   }]);

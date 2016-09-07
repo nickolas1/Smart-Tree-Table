@@ -22,5 +22,8 @@ ng.module('smart-table')
     },
     pipe: {
       delay: 100 //ms
+    },
+    tree: {
+      nodesInitiallyOpen: true
     }
   });
