@@ -4,7 +4,7 @@ Smart Tree Table is a fork of [Smart Table](https://github.com/lorenzofox3/Smart
 
 ## Usage
 
-Smart Tree Table adds internal data to the safe copy that Smart Table uses to display your table. In order to use a tree your data objects need to have a `treeLevel` field, with a value of 0 being a tree leaf and unlimited higher levels possible. After a higher level item is declared, successive lower level items will be its children. For example if your data looks like this:
+Smart Tree Table adds internal data (prefixed by `$$`) to your table data. In order to use a tree your data objects need to have a `treeLevel` field, with a value of 0 being a tree leaf and unlimited higher levels possible. After a higher level item is declared, successive lower level items will be its children. For example if your data looks like this:
 
 ```
 [{name: Americas, treeLevel: 2}, 
