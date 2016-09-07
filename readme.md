@@ -1,51 +1,39 @@
-[![Build Status](https://travis-ci.org/lorenzofox3/Smart-Table.svg?branch=master)](https://travis-ci.org/lorenzofox3/Smart-Table)
+# Smart Tree Table
 
-# Smart Table
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/lorenzofox3/Smart-Table?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+Smart Tree Table is a fork of [Smart Table](https://github.com/lorenzofox3/Smart-Table) that adds tree functionality. At the moment it has font-awesome as an additional dependency beyond angular.
 
-Smart Table is a table module for angular js. It allows you to quickly compose your table in a declarative way including sorting, filtering, row selection, and pagination.
-It is lightweight (around 3kb minified) and has no other dependencies than Angular itself.
-Check the [documentation](http://lorenzofox3.github.io/smart-table-website/) website for more details
+## Usage
 
-## Submitting an issue
+Smart Tree Table adds internal data to the safe copy that Smart Table uses to display your table. In order to use a tree your data objects need to have a `treeLevel` field, with a value of 0 being a tree leaf and unlimited higher levels possible. After a higher level item is declared, successive lower level items will be its children. For example if your data looks like this:
 
-Please be responsible -- investigate potential issues yourself to eliminate the possibility that your issue isn't just an error.  If you are still having problems, try posting on our [gitter](https://gitter.im/lorenzofox3/Smart-Table).  When submitting an issue try as much as possible to:
+```
+[{name: Americas, treeLevel: 2}, 
+{name: Canada, treeLevel: 1}, 
+{name: Quebec, treeLevel: 0}, 
+{name: Alberta, treeLevel: 0}, 
+{name: Mexico, treeLevel: 1}, 
+{name: Jalisco, treeLevel: 0}] 
+```
 
-1. Search in the already existing issues or on [stackoverflow](http://stackoverflow.com/questions/tagged/smart-table?sort=newest&pageSize=30) if your issue has not been raised before.
+the tree table will have this structure: 
 
-2. Give a precise description mentionning angular version, smart-table version.
+```
+Americas +
+|-Canada +
+  |-Quebec
+  |-Alberta
+|-Mexico +
+  |-Jalisco
+```
+where you can click on the rows with plusses to collapse and expand them.
 
-3. Give a way to reproduce your issue, the best would be with a <strong>running example</strong>, you can use [plunkr](http://plnkr.co/) (smart-table is the list of available packages). Note if you want to mimic ajax loading behaviour you can use [$timeout](https://docs.angularjs.org/api/ng/service/$timeout) angular service or [$httpBackend](https://docs.angularjs.org/api/ng/service/$httpBackend).
+The tree functionality is enabled in markup by adding the attribute `st-tree-table` to the table, adding the attribute `st-tree-row` to the table's `<tr>` elements, and optionally adding a `<st-tree-caret>` element in the first `<td>` of the `<tr>`s. 
 
-4. Isolate your code sample on the probable issue to avoid pollution and noise.
+Classes are added to rows to enable styling corresponding to their tree level: `st-tree-row-0`, `st-tree-row-1` etc. The carets also include a `<span>` with class `st-tree-spacer` and a level class `st-tree-spacer-0`, `st-tree-spacer-1` etc. to control spacing if desired. 
 
-5. Close your issue when a solution has been found (and share it with the community).
+The tree defaults to fully expanded when initialized; this can be overruled by adding the attribute `st-tree-init-open=false` to the `<table>` element.
 
-Note that 80% of the open issues are actually not issues but due to lack of good investigation. These issues create unnecessary work, so please be considerate.
-
-Any open issue which do not follow the steps above will be closed without investigation.
-
-## Install
-
-The easiest way is to run `bower install angular-smart-table`, then you just have to add the script and register the module `smart-table` to you application.
-
-You can also install using NPM `npm install angular-smart-table`, so you can use with browserify or webpack
-
-## Test
-
-Run `npm install` after you have installed the dependencies (`npm install` and `bower install`).
-
-## Custom builds
-
-Smart Table is based around a main directive which generate a top level controller whose API can be accessed by sub directives
-(plugins). If you don't need some of these, simply edit the gulpfile (the pluginList variable) and run `gulp build`.
-
-## Older versions
-
-Smart Table used to be configuration based and if you rely on this version, you can still access the code on the [0.2.x](https://github.com/lorenzofox3/Smart-Table/tree/vx.2.x) branch. You will be able to find the documentation related to this version
-[here](https://github.com/lorenzofox3/smart-table-website) (simply open index.html in a browser).
-
-Note, I have closed all the issues related to these versions as people get confused when reading these issues and commented on them like it was related to the newer version. Feel free to reopen any of them (or open a new one), but don't forget to mention it is related to the older versions.
+All of this can be seen in action [at this plunk](http://plnkr.co/edit/o4VmD0Vb3ZoZfOSQwlVG?p=preview).
 
 ## License
 
