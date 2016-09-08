@@ -1,5 +1,6 @@
 ng.module('smart-table')
   .controller('stTableController', ['$scope', '$parse', '$filter', '$attrs', 'stConfig', function StTableController ($scope, $parse, $filter, $attrs, stConfig) {
+    var _this = this;
     var propertyName = $attrs.stTable;
     var displayGetter = $parse(propertyName);
     var displaySetter = displayGetter.assign;
@@ -23,6 +24,10 @@ ng.module('smart-table')
     var nodeExpanded = {};
     //TODO allow passing an object with different levels open or closed?
     var initiallyOpen = 'stTreeInitOpen' in $attrs ? Boolean(JSON.parse($attrs.stTreeInitOpen.toLowerCase())) : stConfig.tree.nodesInitiallyOpen;
+    var selectedRowGetter;
+    var selectedRowWatch;
+    if ($attrs.stSelectedRow) selectedRowGetter = $parse($attrs.stSelectedRow);
+    
     
     function copyRefs (src) {
       var copy = src ? [].concat(src) : [];
@@ -102,6 +107,14 @@ ng.module('smart-table')
         }
       });
     }
+    
+    function setSelectedRowWatch() {
+      selectedRowWatch = $scope.$watch(function () {
+        return selectedRowGetter($scope);
+      }, function(newValue, oldValue) {
+        if (newValue && newValue !== oldValue) _this.select(newValue, 'single')
+      });
+    };
 
     if ($attrs.stSafeSrc) {
       safeGetter = $parse($attrs.stSafeSrc);
@@ -203,6 +216,11 @@ ng.module('smart-table')
           if (lastSelected) {
             lastSelected.isSelected = false;
           }
+          if ($attrs.stSelectedRow) {
+            selectedRowWatch()
+            selectedRowGetter.assign($scope, row);
+            setSelectedRowWatch();
+          }
           lastSelected = row.isSelected === true ? row : undefined;
         } else {
           rows[index].isSelected = !rows[index].isSelected;
@@ -278,6 +296,11 @@ ng.module('smart-table')
     this.checkExpanded = function checkExpanded (treeId) {
       return nodeExpanded[treeId];
     };
+
+    if ($attrs.stSelectedRow) {
+      setSelectedRowWatch();
+    }
+    
   }])
   .directive('stTable', function () {
     return {
