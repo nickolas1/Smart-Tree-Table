@@ -20,7 +20,7 @@ ng.module('smart-table')
     var ctrl = this;
     var lastSelected;
     var isTreeTable = 'stTreeTable' in $attrs;
-    var nodeExpanded;
+    var nodeExpanded = {};
     //TODO allow passing an object with different levels open or closed?
     var initiallyOpen = 'stTreeInitOpen' in $attrs ? Boolean(JSON.parse($attrs.stTreeInitOpen.toLowerCase())) : stConfig.tree.nodesInitiallyOpen;
     
@@ -62,15 +62,14 @@ ng.module('smart-table')
       data.forEach(function(d, i) {
         if (d.treeLevel > 0) {
           d.$$treeDescendents = [];
-          d.$$treeIsExpanded = initiallyOpen;
+          if (!d.hasOwnProperty('$$treeIsExpanded')) d.$$treeIsExpanded = initiallyOpen;
         }
         d.$$treeAncestors = findTreeAncestors(d, i);
         d.$$treeShown = d.treeLevel > 0;
       });
       
-      nodeExpanded = {};
       Object.keys(ancestorSet).forEach(function(k) {
-        nodeExpanded[k] = initiallyOpen;
+        if (!nodeExpanded.hasOwnProperty(k)) nodeExpanded[k] = initiallyOpen;
       });
       
       data.forEach(function(d, i) {

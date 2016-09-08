@@ -68,7 +68,7 @@ ng.module('smart-table')
     var ctrl = this;
     var lastSelected;
     var isTreeTable = 'stTreeTable' in $attrs;
-    var nodeExpanded;
+    var nodeExpanded = {};
     //TODO allow passing an object with different levels open or closed?
     var initiallyOpen = 'stTreeInitOpen' in $attrs ? Boolean(JSON.parse($attrs.stTreeInitOpen.toLowerCase())) : stConfig.tree.nodesInitiallyOpen;
     
@@ -110,15 +110,14 @@ ng.module('smart-table')
       data.forEach(function(d, i) {
         if (d.treeLevel > 0) {
           d.$$treeDescendents = [];
-          d.$$treeIsExpanded = initiallyOpen;
+          if (!d.hasOwnProperty('$$treeIsExpanded')) d.$$treeIsExpanded = initiallyOpen;
         }
         d.$$treeAncestors = findTreeAncestors(d, i);
         d.$$treeShown = d.treeLevel > 0;
       });
       
-      nodeExpanded = {};
       Object.keys(ancestorSet).forEach(function(k) {
-        nodeExpanded[k] = initiallyOpen;
+        if (!nodeExpanded.hasOwnProperty(k)) nodeExpanded[k] = initiallyOpen;
       });
       
       data.forEach(function(d, i) {
@@ -395,13 +394,15 @@ ng.module('smart-table')
       restrict: 'A',
       require: '^stTable',
       scope: {
-        row: '=stSelectRow'
+        row: '=stSelectRow',
+        onSelect: '=?stOnSelect'
       },
       link: function (scope, element, attr, ctrl) {
         var mode = attr.stSelectMode || stConfig.select.mode;
         element.bind('click', function () {
           scope.$apply(function () {
             ctrl.select(scope.row, mode);
+            if (attr.stOnSelect) scope.onSelect(scope.row);
           });
         });
 
@@ -628,10 +629,6 @@ ng.module('smart-table')
         var repeat = tAttrs.ngRepeat;
         var rptVar = repeat.split(' in ')[0];
         tElement.attr('ng-repeat', repeat + ' track by ' + rptVar + '.$$treeId');
-        tElement.attr('st-tree-row-internal', '');
-        tElement.attr('st-tree-id', rptVar + '.$$treeId');
-        tElement.attr('st-tree-level', rptVar + '.treeLevel');
-        tElement.attr('st-tree-index', '$index');
         tElement.attr('ng-if', rptVar + '.$$treeShown');
         tElement.attr('ng-class', '"st-tree-row-"+' + rptVar + '.treeLevel');
             
@@ -639,25 +636,9 @@ ng.module('smart-table')
         caretEl.attr('toggle-exists', rptVar + '.treeLevel > 0');
         caretEl.attr('toggle-is-expanded', rptVar + '.$$treeIsExpanded');
         caretEl.attr('toggle-level', rptVar + '.treeLevel');
-      }
-    };
-  }]);
-
-ng.module('smart-table')
-  .directive('stTreeRowInternal', ['stConfig', function (stConfig) {
-    return {
-      require: '^^stTable',
-      scope: {
-        stTreeId: '<',
-        stTreeLevel: '<',
-        stTreeIndex: '<'
-      },
-      link: function(scope, element, attrs, tableCtrl) {
-        if (scope.stTreeLevel > 0) {
-          element.bind('click', function() {
-            tableCtrl.toggleRow(scope.stTreeId, scope.stTreeIndex);
-          });
-        }
+        caretEl.attr('st-tree-id', rptVar + '.$$treeId');
+        caretEl.attr('st-tree-level', rptVar + '.treeLevel');
+        caretEl.attr('st-tree-index', '$index');
       }
     };
   }]);
@@ -665,13 +646,23 @@ ng.module('smart-table')
 ng.module('smart-table')
   .directive('stTreeCaret', ['stConfig', function (stConfig) {
     return {
+      require: '^^stTable',
       scope: {
         toggleExists: '<',
         toggleIsExpanded: '<',
-        toggleLevel: '<'
+        toggleLevel: '<',
+        stTreeId: '<',
+        stTreeLevel: '<',
+        stTreeIndex: '<'
       },
       templateUrl: 'sttable/template/st-tree-toggle.html',
-      link: function(scope) {
+      link: function(scope, element, attrs, ctrl) {
+        if (scope.toggleExists) {
+          element.bind('click', function($event) {
+            $event.stopPropagation();
+            ctrl.toggleRow(scope.stTreeId, scope.stTreeIndex);
+          });
+        }
         scope.spacerClass = 'st-tree-spacer st-tree-spacer-level-' + scope.toggleLevel;
       }
     };
