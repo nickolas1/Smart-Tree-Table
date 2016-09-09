@@ -1,6 +1,6 @@
 {
   "name": "angular-smart-table",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lorenzofox3/Smart-Table.git"
+    "url": "https://github.com/nickolas1/Smart-Tree-Table.git"
   },
   "author": "Laurent Renard",
   "license": "MIT",
