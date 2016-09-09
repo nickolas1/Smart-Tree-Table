@@ -9,10 +9,6 @@ ng.module('smart-table')
         var repeat = tAttrs.ngRepeat;
         var rptVar = repeat.split(' in ')[0];
         tElement.attr('ng-repeat', repeat + ' track by ' + rptVar + '.$$treeId');
-        tElement.attr('st-tree-row-internal', '');
-        tElement.attr('st-tree-id', rptVar + '.$$treeId');
-        tElement.attr('st-tree-level', rptVar + '.treeLevel');
-        tElement.attr('st-tree-index', '$index');
         tElement.attr('ng-if', rptVar + '.$$treeShown');
         tElement.attr('ng-class', '"st-tree-row-"+' + rptVar + '.treeLevel');
             
@@ -20,25 +16,9 @@ ng.module('smart-table')
         caretEl.attr('toggle-exists', rptVar + '.treeLevel > 0');
         caretEl.attr('toggle-is-expanded', rptVar + '.$$treeIsExpanded');
         caretEl.attr('toggle-level', rptVar + '.treeLevel');
-      }
-    };
-  }]);
-
-ng.module('smart-table')
-  .directive('stTreeRowInternal', ['stConfig', function (stConfig) {
-    return {
-      require: '^^stTable',
-      scope: {
-        stTreeId: '<',
-        stTreeLevel: '<',
-        stTreeIndex: '<'
-      },
-      link: function(scope, element, attrs, tableCtrl) {
-        if (scope.stTreeLevel > 0) {
-          element.bind('click', function() {
-            tableCtrl.toggleRow(scope.stTreeId, scope.stTreeIndex);
-          });
-        }
+        caretEl.attr('st-tree-id', rptVar + '.$$treeId');
+        caretEl.attr('st-tree-level', rptVar + '.treeLevel');
+        caretEl.attr('st-tree-index', '$index');
       }
     };
   }]);
@@ -46,13 +26,23 @@ ng.module('smart-table')
 ng.module('smart-table')
   .directive('stTreeCaret', ['stConfig', function (stConfig) {
     return {
+      require: '^^stTable',
       scope: {
         toggleExists: '<',
         toggleIsExpanded: '<',
-        toggleLevel: '<'
+        toggleLevel: '<',
+        stTreeId: '<',
+        stTreeLevel: '<',
+        stTreeIndex: '<'
       },
       templateUrl: 'sttable/template/st-tree-toggle.html',
-      link: function(scope) {
+      link: function(scope, element, attrs, ctrl) {
+        if (scope.toggleExists) {
+          element.bind('click', function($event) {
+            $event.stopPropagation();
+            ctrl.toggleRow(scope.stTreeId, scope.stTreeIndex);
+          });
+        }
         scope.spacerClass = 'st-tree-spacer st-tree-spacer-level-' + scope.toggleLevel;
       }
     };

@@ -4,13 +4,15 @@ ng.module('smart-table')
       restrict: 'A',
       require: '^stTable',
       scope: {
-        row: '=stSelectRow'
+        row: '=stSelectRow',
+        onSelect: '=?stOnSelect'
       },
       link: function (scope, element, attr, ctrl) {
         var mode = attr.stSelectMode || stConfig.select.mode;
         element.bind('click', function () {
           scope.$apply(function () {
             ctrl.select(scope.row, mode);
+            if (attr.stOnSelect) scope.onSelect(scope.row);
           });
         });
 
