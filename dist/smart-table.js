@@ -1,5 +1,5 @@
 /** 
-* @version 2.1.8
+* @version 2.1.9
 * @license MIT
 */
 (function (ng, undefined){
@@ -458,6 +458,10 @@ ng.module('smart-table')
         var descendingFirst = attr.stDescendingFirst !== undefined ? attr.stDescendingFirst : stConfig.sort.descendingFirst;
         var promise = null;
         var throttle = attr.stDelay || stConfig.sort.delay;
+        var onSort;
+        if (attr.stOnSort) {
+          onSort = scope.$eval(attr.stOnSort) !== undefined ? scope.$eval(attr.stOnSort) : false;
+        }
 
         if (attr.stSortDefault) {
           sortDefault = scope.$eval(attr.stSortDefault) !== undefined ? scope.$eval(attr.stSortDefault) : attr.stSortDefault;
@@ -490,6 +494,7 @@ ng.module('smart-table')
           } else {
             promise = $timeout(func, throttle);
           }
+          if (onSort) onSort(predicate, index);
         }
 
         element.bind('click', function sortClick () {
