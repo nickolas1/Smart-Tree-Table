@@ -225,6 +225,11 @@ ng.module('smart-table')
         } else {
           rows[index].isSelected = !rows[index].isSelected;
         }
+      } else { // if a bad row selection is passed in, deselect the current row
+        if ($attrs.stSelectedRow) {
+          lastSelected.isSelected = false;
+          lastSelected = undefined;
+        }
       }
     };
 
