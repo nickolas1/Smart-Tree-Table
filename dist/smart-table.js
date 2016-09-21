@@ -1,5 +1,5 @@
 /** 
-* @version 2.1.9
+* @version 2.1.11
 * @license MIT
 */
 (function (ng, undefined){
@@ -70,8 +70,7 @@ ng.module('smart-table')
     var lastSelected;
     var isTreeTable = 'stTreeTable' in $attrs;
     var nodeExpanded = {};
-    //TODO allow passing an object with different levels open or closed?
-    var initiallyOpen = 'stTreeInitOpen' in $attrs ? Boolean(JSON.parse($attrs.stTreeInitOpen.toLowerCase())) : stConfig.tree.nodesInitiallyOpen;
+    var initiallyOpen = 'stTreeInitOpen' in $attrs ? parseInitiallyOpenAttr() : stConfig.tree.nodesInitiallyOpen;
     var selectedRowGetter;
     var selectedRowWatch;
     if ($attrs.stSelectedRow) selectedRowGetter = $parse($attrs.stSelectedRow);
@@ -115,14 +114,23 @@ ng.module('smart-table')
       data.forEach(function(d, i) {
         if (d.treeLevel > 0) {
           d.$$treeDescendents = [];
-          if (!d.hasOwnProperty('$$treeIsExpanded')) d.$$treeIsExpanded = initiallyOpen;
+          if (!d.hasOwnProperty('$$treeIsExpanded')) d.$$treeIsExpanded = getInitiallyOpen(d.treeLevel);
         }
         d.$$treeAncestors = findTreeAncestors(d, i);
         d.$$treeShown = d.treeLevel > 0;
       });
       
       Object.keys(ancestorSet).forEach(function(k) {
-        if (!nodeExpanded.hasOwnProperty(k)) nodeExpanded[k] = initiallyOpen;
+        if (!nodeExpanded.hasOwnProperty(k)) {
+          var d;
+          for (var i = 0 ; i < data.length; i++) {
+            if (data[i].$$treeId === k) {
+              d = data[i];
+              break;
+            }
+          };
+          nodeExpanded[k] = d.$$treeIsExpanded;
+        }
       });
       
       data.forEach(function(d, i) {
@@ -141,6 +149,14 @@ ng.module('smart-table')
         }
         return ancestors;
       }
+      
+      function getInitiallyOpen(treeLevel) {
+        if (angular.isObject(initiallyOpen)) {
+          return initiallyOpen.hasOwnProperty(treeLevel) ? initiallyOpen[treeLevel] : stConfig.tree.nodesInitiallyOpen;
+        } else {
+          return initiallyOpen;
+        }
+      }
     }
     
     function checkDescendentVisibility(data, idx) {
@@ -154,6 +170,20 @@ ng.module('smart-table')
           checkDescendentVisibility(data, descIdx);
         }
       });
+    }
+    
+    function parseInitiallyOpenAttr() {
+      var treeOpenGetter = $parse($attrs.stTreeInitOpen);
+      var treeOpen = treeOpenGetter($scope);
+      if (angular.isObject(treeOpen)) {
+        var returnObj = {};
+        for (var prop in treeOpen) {
+          returnObj[prop] = Boolean(JSON.parse(treeOpen[prop]));
+        }
+        return returnObj;
+      } else {
+        return Boolean(JSON.parse(treeOpen.toLowerCase()));
+      }
     }
     
     function setSelectedRowWatch() {
